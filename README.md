@@ -84,7 +84,36 @@ The calculator implements three fitted multivariable models:
 - **PFS and OS**: Weibull Accelerated Failure Time (AFT) models with natural spline transformation of log(SIRI) and interaction terms between chemotherapy regimen and inflammatory status
 - **Tumor response**: Logistic regression model for objective response probability (RECIST 1.1)
 
-All models adjust for tumor burden, ECOG performance status, cancer anorexia-cachexia syndrome, and chemotherapy regimen. SIRI is modeled as a continuous variable using restricted cubic or natural splines to capture nonlinear associations.
+All models adjust for tumor burden, ECOG performance status, cancer anorexia-cachexia syndrome, and chemotherapy regimen. SIRI is modeled as a continuous variable using natural splines to capture nonlinear associations.
+
+## Reproducible Functions
+
+This package provides a complete set of functions to reproduce every table and figure from the associated manuscript. After installation, all outputs can be regenerated with a single function call:
+
+```r
+library(pantheia)
+```
+
+### Available Functions
+
+| Function | Description |
+|---|---|
+| `pantheia()` | Launch the interactive prognostic calculator (Shiny app) |
+| `table1()` | Baseline patient characteristics |
+| `fig_1()` | Prognostic validation of SIRI after discretization: Kaplan-Meier survival curves (OS, PFS) and objective response rates by SIRI group |
+| `fig_2()` | Nonlinear multivariable association between continuous log(SIRI) and clinical outcomes (PFS, OS, response) |
+| `fig_s1()` | Comparative performance of log-transformed inflammatory indices |
+| `fig_s2()` | Association between SIRI levels and cancer anorexia-cachexia syndrome and symptom burden |
+| `fig_s3()` | Association between SIRI levels and hepatic involvement and tumor burden |
+| `fig_s4()` | Association between SIRI levels and demographic and lifestyle factors |
+
+### Accessing the Dataset
+
+The complete anonymized study dataset is included in the package and can be loaded directly into R for independent analysis:
+
+```r
+data("pantheia_data", package = "pantheia")
+```
 
 ## Citation
 
