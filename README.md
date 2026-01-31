@@ -86,42 +86,33 @@ The calculator implements three fitted multivariable models:
 
 All models adjust for tumor burden, ECOG performance status, cancer anorexia-cachexia syndrome, and chemotherapy regimen. SIRI is modeled as a continuous variable using natural splines to capture nonlinear associations.
 
-## Reproducible Functions & Model Objects
+## Reproducible Functions
 
-This package contains all the functions and fitted model objects required to reproduce the analytical outputs presented in the associated manuscript. The complete source code is available at [`inst/app/app.R`](inst/app/app.R).
+This package provides a complete set of functions to reproduce every table and figure from the associated manuscript. After installation, all outputs can be regenerated with a single function call:
 
-### Prediction Functions
+```r
+library(pantheia)
+```
+
+### Available Functions
 
 | Function | Description |
 |---|---|
-| `predecir_final()` | Weibull AFT prediction engine for PFS and OS. Constructs the design matrix from clinical inputs, maps coefficients (including spline and interaction terms), computes the linear predictor, and derives median survival times with 95% confidence intervals from the variance-covariance matrix. |
-| `predecir_respuesta()` | Logistic regression prediction engine for objective response (RECIST). Manually constructs the natural spline basis for log(SIRI) using the original interior knots and boundary knots, applies all covariate effects and regimen-by-SIRI interaction terms, and returns the predicted response probability. |
+| `pantheia()` | Launch the interactive prognostic calculator (Shiny app) |
+| `table1()` | Baseline patient characteristics |
+| `fig_1()` | Prognostic validation of SIRI after discretization: Kaplan-Meier survival curves (OS, PFS) and objective response rates by SIRI group |
+| `fig_2()` | Nonlinear multivariable association between continuous log(SIRI) and clinical outcomes (PFS, OS, response) |
+| `fig_s1()` | Comparative performance of log-transformed inflammatory indices |
+| `fig_s2()` | Association between SIRI levels and cancer anorexia-cachexia syndrome and symptom burden |
+| `fig_s3()` | Association between SIRI levels and hepatic involvement and tumor burden |
+| `fig_s4()` | Association between SIRI levels and demographic and lifestyle factors |
 
-### Survival Curve Generation
+### Accessing the Dataset
 
-The application generates individualized Weibull survival curves for each patient profile:
-
-- **PFS curve**: Predicted survival function over 24 months with 95% confidence band, derived from the AFT linear predictor and scale parameter
-- **OS curve**: Predicted survival function over 36 months with 95% confidence band, using the same Weibull parameterization
-
-Both curves are rendered using `ggplot2` and display the median survival estimate with its confidence interval.
-
-### Fitted Model Objects
-
-The following serialized R model objects are included in the package under `inst/app/` and can be loaded independently for inspection or reuse:
-
-| File | Model | Contents |
-|---|---|---|
-| `FINAL_PFS_RUBIN.rds` | Weibull AFT for PFS | Pooled coefficients, variance-covariance matrix, spline knots, scale parameter, factor levels (from multiple imputation via Rubin's rules) |
-| `FINAL_OS_RUBIN.rds` | Weibull AFT for OS | Same structure as PFS model |
-| `FINAL_RESP_RUBIN_NS13.rds` | Logistic regression for ORR | Pooled coefficients, interior knots for natural splines, factor levels |
-
-These objects contain the complete model specification needed to reproduce any prediction: coefficients, variance-covariance matrices, spline knot locations, and the original factor levels used during fitting. Researchers can load them directly:
+The complete anonymized study dataset is included in the package and can be loaded directly into R for independent analysis:
 
 ```r
-mod_pfs  <- readRDS(system.file("app", "FINAL_PFS_RUBIN.rds", package = "pantheia"))
-mod_os   <- readRDS(system.file("app", "FINAL_OS_RUBIN.rds", package = "pantheia"))
-mod_resp <- readRDS(system.file("app", "FINAL_RESP_RUBIN_NS13.rds", package = "pantheia"))
+data("pantheia_data", package = "pantheia")
 ```
 
 ## Citation
