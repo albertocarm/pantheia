@@ -27,13 +27,17 @@ PANTHEIA-SEOM is a multicenter observational cohort study conducted across 22 ho
 
 The project investigates the role of systemic inflammation, specifically through SIRI, as a prognostic and potentially predictive biomarker in patients with metastatic PDAC receiving first-line chemotherapy.
 
-## Reproducibility
+## Transparency, Open Code & Reproducibility
 
-This repository is made publicly available to ensure **frictionless reproducibility** of the analytical tools developed within the PANTHEIA-SEOM project. All source code for the interactive calculator, including the prediction engine, the Shiny interface, and the fitted model objects, is openly shared so that any researcher can:
+This R package is released as a commitment to **open science** and **frictionless reproducibility**. In line with best practices in biomarker research and clinical modeling, the complete source code and fitted model objects are made publicly available so that every aspect of the calculator can be independently verified.
 
-- Inspect and audit the statistical models underlying the predictions
-- Reproduce the calculator locally without any external dependencies beyond standard R packages
-- Adapt or extend the methodology for their own research
+**Why this matters:**
+
+- **Full transparency**: Every line of code behind the prediction engine, the Shiny interface, and the model specifications is open for inspection. There are no black boxes: researchers and reviewers can trace exactly how each clinical prediction is derived, from raw model coefficients to the final survival curves displayed in the calculator.
+- **Frictionless reproducibility**: With a single command (`devtools::install_github("albertocarm/pantheia")`), any researcher can install and run the exact same calculator locally, with no configuration, no external servers, and no dependencies beyond standard R packages. The models, the code, and the application are all contained within this package.
+- **Audit and extension**: The fitted model objects (`.rds` files) are included in the package, allowing independent re-evaluation of coefficients, variance-covariance matrices, and spline specifications. Researchers can adapt the methodology or apply it to their own cohorts.
+
+This approach aligns with the STROBE and REMARK reporting guidelines followed by the PANTHEIA-SEOM study, and reflects our conviction that clinical research tools should be open, verifiable, and accessible to the scientific community.
 
 ## Installation
 
