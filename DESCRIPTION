@@ -23,6 +23,7 @@ Imports:
     gtsummary,
     patchwork,
     rlang,
-    survminer
+    survminer,
+    stats
 RoxygenNote: 7.2.3
 LazyData: true
