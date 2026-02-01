@@ -25,5 +25,17 @@ utils::globalVariables(c(
   "met_liver", "liver_met", "liver_burden",
   "met_lung", "lung_met", 
   "met_peritoneum", "peritoneum_met",
-  "met_locoregional_ln"
+  "met_locoregional_ln",
+  
+  # datos
+  "pantheia_data"
 ))
+
+
+
+
+
+
+
+
+

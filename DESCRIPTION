@@ -5,25 +5,31 @@ Authors@R: person("Pantheia/SEOM", role = c("aut", "cre"), email = "pantheia@exa
 Description: Interactive Shiny application illustrating the prognostic impact
     of SIRI (Systemic Inflammation Response Index) on therapeutic outcomes in
     pancreatic cancer. Provides predicted median PFS, OS, and response
-    probability with survival curves.
+    probability with survival curves. Includes a comprehensive data explorer
+    for univariate and bivariate analyses.
 License: GPL-3
 Encoding: UTF-8
 Depends: R (>= 4.0.0)
 Imports:
-    shiny,
-    survival,
-    splines,
-    ggplot2,
-    scales,
-    ggpubr,
-    MASS,
+    bslib,
     dplyr,
+    DT,
+    forcats,
+    ggplot2,
+    ggpubr,
     ggsci,
     ggstatsplot,
     gtsummary,
+    MASS,
     patchwork,
+    plotly,
     rlang,
+    scales,
+    shiny,
+    splines,
+    stringr,
+    survival,
     survminer,
-    stats
+    tidyr
 RoxygenNote: 7.2.3
 LazyData: true

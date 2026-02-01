@@ -10,17 +10,16 @@
 #' @export
 fig_s1 <- function(data = pantheia::pantheia_data) {
   
-  # 1. Verificación de paquetes
+  
   if (!requireNamespace("ggplot2", quietly = TRUE)) stop("Package 'ggplot2' is required.")
   if (!requireNamespace("patchwork", quietly = TRUE)) stop("Package 'patchwork' is required.")
   
-  # 2. Verificación de variables
+  
   if (!all(c("SIRI", "logsiri") %in% names(data))) {
-    stop("❌ Error: Faltan las variables 'SIRI' o 'logsiri' en el dataset.")
+    stop("Error: Faltan las variables 'SIRI' o 'logsiri' en el dataset.")
   }
   
-  # 3. Limpieza básica para evitar warnings de ggplot por NAs
-  # Filtramos solo para el plot, sin afectar al objeto original
+
   df_plot <- data[!is.na(data$SIRI) & !is.na(data$logsiri), ]
   
   # --- Plot A: Raw Distribution ---
@@ -55,12 +54,12 @@ fig_s1 <- function(data = pantheia::pantheia_data) {
       plot.tag = ggplot2::element_text(face = "bold", size = 16),
       axis.title = ggplot2::element_text(face = "bold"),
       panel.grid.minor = ggplot2::element_blank(),
-      axis.title.y = ggplot2::element_blank(), # Estético: quitar eje Y del segundo plot
+      axis.title.y = ggplot2::element_blank(), 
       axis.text.y = ggplot2::element_blank(),
       axis.ticks.y = ggplot2::element_blank()
     )
   
-  # --- Combinación con Patchwork ---
+  # --- Patchwork ---
   p_combined <- (p_raw | p_log) +
     patchwork::plot_annotation(
       title = "Distribution of Systemic Inflammation Response Index (SIRI)",
