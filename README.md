@@ -106,6 +106,8 @@ library(pantheia)
 | `fig_s2()` | Association between SIRI levels and cancer anorexia-cachexia syndrome and symptom burden |
 | `fig_s3()` | Association between SIRI levels and hepatic involvement and tumor burden |
 | `fig_s4()` | Association between SIRI levels and demographic and lifestyle factors |
+| `pantheia_explorer()` | Data exploration |
+
 
 ### Accessing the Dataset
 

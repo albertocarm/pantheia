@@ -7,9 +7,7 @@
 
 fig_3 <- function() {
   
-  # --- 1. Asignación directa ---
-  # Al ser un paquete, R busca estas variables automáticamente en sysdata.rda
-  # Eliminamos la comprobación 'exists()' que causaba el error falso.
+
   mod_pfs_int  <- mod_pfs
   mod_os_int   <- mod_os
   mod_resp_int <- mod_resp
@@ -20,7 +18,7 @@ fig_3 <- function() {
   # --- 2. Setup Grid and Reference ---
   x_grid <- seq(-2, 2, length.out = 100)
   
-  # Reference value (median) for HR=1 or OR=1
+
   q2 <- 0.04
   if (!is.null(mod_pfs_main$knots)) {
     q2 <- unname(mod_pfs_main$knots["50%"])
