@@ -2,12 +2,15 @@
 % Please edit documentation in R/siri_calculator.R
 \name{siri_calculator}
 \alias{siri_calculator}
-\title{Launch the SIRI Prognostic Calculator}
+\title{Launch SIRI Prognostic Calculator (Shiny App)}
 \usage{
 siri_calculator()
 }
+\value{
+A Shiny app object.
+}
 \description{
-Opens a Shiny application that allows users to input clinical variables
-(SIRI, tumor diameter, regimen, ECOG, CACS) and receive prognostic estimates
-for Median PFS, Median OS, and Response Probability based on the internal Rubin models.
+Launches a local Shiny application that predicts Progression-Free Survival (PFS),
+Overall Survival (OS), and Response Probability based on the SIRI biomarker and
+other clinical variables.
 }

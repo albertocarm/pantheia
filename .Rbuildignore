@@ -3,3 +3,6 @@
 ^utils$
 ^LICENSE$
 ^README\.md$
+^man/figures/\.gitkeep$
+^figure_combined\.pdf$
+^figure_combined\.png$
