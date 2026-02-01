@@ -2,12 +2,16 @@
 % Please edit documentation in R/fig_2.R
 \name{fig_2}
 \alias{fig_2}
-\title{Generate Figure 2: Interaction Curves (Regimen vs logSIRI)}
+\title{Figure 2: Multivariable Analysis Forest Plot (Main Effects)}
 \usage{
 fig_2()
 }
+\value{
+A ggplot object.
+}
 \description{
-Reproduces Figure 2. Plots the estimated HR (PFS, OS) and OR (Response) against logSIRI,
-stratified by chemotherapy regimen. Includes panel-specific p-values for the main effect
-and nonlinearity, derived directly from the internal Rubin models.
+Forest plot showing Hazard Ratios (PFS, OS) and Odds Ratios (Response)
+derived from multivariable models without interaction terms.
+The effect of logSIRI is calculated comparing the 75th vs 25th percentile
+of the study population.
 }

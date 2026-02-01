@@ -1,282 +1,202 @@
-#' Generate Figure 2: Interaction Curves (Regimen vs logSIRI)
+#' Figure 2: Multivariable Analysis Forest Plot (Main Effects)
 #'
-#' Reproduces Figure 2. Plots the estimated HR (PFS, OS) and OR (Response) against logSIRI,
-#' stratified by chemotherapy regimen. Includes panel-specific p-values for the main effect
-#' and nonlinearity, derived directly from the internal Rubin models.
+#' Forest plot showing Hazard Ratios (PFS, OS) and Odds Ratios (Response)
+#' derived from multivariable models without interaction terms.
+#' The effect of logSIRI is calculated comparing the 75th vs 25th percentile
+#' of the study population.
+#'
+#' @return A ggplot object.
 #' @export
 fig_2 <- function() {
   
-  # --- 1. Check for Internal Data ---
-  required_mods <- c("mod_pfs", "mod_os", "mod_resp", 
-                     "FINAL_PFS_RUBIN_sin_interaccion", 
-                     "FINAL_OS_RUBIN_sin_interaccion", 
-                     "FINAL_RESP_RUBIN_sin_interaccion")
+  # =============================================================================
+  # 1. SETUP & CONSTANTS
+  # =============================================================================
   
-  # Note: In a package, internal data is automatically available. 
-  # This check acts as a safeguard.
-  missing_mods <- required_mods[!sapply(required_mods, exists)]
-  if (length(missing_mods) > 0) {
-    stop("The following internal models are missing from sysdata.rda: ", 
-         paste(missing_mods, collapse = ", "))
-  }
+  # Define exact quantiles from the study cohort (logsiri)
+  val_q1 <- 0.1396771
+  val_q3 <- 1.3868660
   
-  # Map internal names to shorter variables for the function
-  mod_pfs_int  <- mod_pfs
-  mod_os_int   <- mod_os
-  mod_resp_int <- mod_resp
-  mod_pfs_main <- FINAL_PFS_RUBIN_sin_interaccion
-  mod_os_main  <- FINAL_OS_RUBIN_sin_interaccion
-  mod_resp_main <- FINAL_RESP_RUBIN_sin_interaccion
+  # Median and approximate boundaries for spline knots
+  median_val <- 0.7435348
+  k_int <- median_val
+  k_bnd <- c(-0.8, 2.5)
   
-  # --- 2. Setup Grid and Reference ---
-  x_grid <- seq(-2, 2, length.out = 100)
+  # =============================================================================
+  # 2. HELPER FUNCTIONS
+  # =============================================================================
   
-  # Reference value (median) for HR=1 or OR=1
-  q2 <- 0.04
-  if (!is.null(mod_pfs_main$knots)) {
-    q2 <- unname(mod_pfs_main$knots["50%"])
-  }
-  
-  # --- 3. Helper Functions (Defined locally to avoid namespace issues) ---
-  
-  # Helper: Main Effects HR (Splines/AFT)
-  calc_main_hr <- function(mod, x_vals, ref_val) {
-    betas <- mod$coef
-    V <- mod$vcov
-    scale <- mod$scale 
+  # --- Calculate Main Effect (Q3 vs Q1) ---
+  calc_main_effect <- function(mod, q1, q3, k_i, k_b, type="AFT") {
+    idx <- grep("logsiri", names(mod$coef), ignore.case=TRUE)
+    if(length(idx) == 0) return(list(est=NA, lo=NA, hi=NA))
     
-    idx <- grep("logsiri", names(betas), ignore.case = TRUE)
-    b_siri <- betas[idx]
-    v_siri <- V[idx, idx]
+    b <- mod$coef[idx]
+    v <- mod$vcov[idx, idx, drop=FALSE]
     
-    # Handle Knots for Splines
-    if(!is.null(mod$knots)) {
-      k_vec <- mod$knots
-      # Use splines::ns explicitly
-      X_seq <- splines::ns(x_vals, knots=k_vec["50%"], Boundary.knots=k_vec[c(1,3)])
-      X_ref <- splines::ns(ref_val, knots=k_vec["50%"], Boundary.knots=k_vec[c(1,3)])
-    } else {
-      X_seq <- matrix(x_vals, ncol=1)
-      X_ref <- matrix(ref_val, ncol=1)
+    if(length(idx) == 1) { 
+      # Linear model calculation
+      diff_val <- as.numeric(q3 - q1)
+      delta <- diff_val * b
+      var   <- (diff_val^2) * v
+    } else { 
+      # Restricted cubic spline calculation
+      tryCatch({
+        b1 <- splines::ns(q1, knots=k_i, Boundary.knots=k_b)
+        b3 <- splines::ns(q3, knots=k_i, Boundary.knots=k_b)
+        diff_b <- as.numeric(b3 - b1)
+        if(length(diff_b) != length(b)) diff_b <- rep(0, length(b))
+        delta <- sum(diff_b * b)
+        var   <- as.numeric(t(diff_b) %*% v %*% diff_b)
+      }, error = function(e) {
+        # Fallback to linear calculation if spline basis fails
+        delta <<- as.numeric(q3 - q1) * b[1]
+        var   <<- (as.numeric(q3 - q1)^2) * v[1,1]
+      })
     }
     
-    X_diff <- sweep(X_seq, 2, as.vector(X_ref), "-")
-    lp <- X_diff %*% b_siri
-    se <- sqrt(rowSums((X_diff %*% v_siri) * X_diff))
+    se <- sqrt(as.numeric(var))
     
-    log_hr <- -lp / scale
-    se_hr <- se / scale
-    
-    list(est = exp(log_hr), lo = exp(log_hr - 1.96 * se_hr), hi = exp(log_hr + 1.96 * se_hr))
-  }
-  
-  # Helper: Main Effects OR (Logistic) - Converted to Relative OR
-  calc_main_or <- function(mod, x_vals, ref_val) {
-    betas <- mod$coef
-    V <- mod$vcov
-    
-    idx <- grep("logsiri", names(betas), ignore.case = TRUE)
-    b_siri <- betas[idx]
-    v_siri <- V[idx, idx]
-    
-    diffs <- x_vals - ref_val
-    lp_diff <- diffs * b_siri
-    se_diff <- abs(diffs) * sqrt(v_siri)
-    
-    list(est = exp(lp_diff), lo = exp(lp_diff - 1.96 * se_diff), hi = exp(lp_diff + 1.96 * se_diff))
-  }
-  
-  # Helper: Wald P-value
-  wald_p_custom <- function(mod, terms_grep) {
-    b <- mod$coef
-    # Handle aliased coefficients (NA)
-    b <- b[!is.na(b)]
-    idx <- grep(terms_grep, names(b))
-    if(length(idx)==0) return(NA)
-    
-    b_sub <- b[idx]
-    # Re-fetch vcov matching the clean coefficients
-    V_full <- as.matrix(mod$vcov)
-    # Ensure dimensions match (sometimes vcov includes aliased, sometimes not depending on package)
-    keep_names <- names(b)
-    V_sub <- V_full[keep_names, keep_names, drop=FALSE]
-    V_sub <- V_sub[idx, idx, drop=FALSE]
-    
-    stat <- tryCatch({
-      as.numeric(t(b_sub) %*% qr.solve(V_sub, b_sub, tol = 1e-12))
-    }, error = function(e) NA)
-    
-    if(is.na(stat)) return(NA)
-    stats::pchisq(stat, df=length(b_sub), lower.tail=FALSE)
-  }
-  
-  # --- 4. Core Calculation Logic ---
-  
-  calc_curve_mixed <- function(mod_int, mod_main, kind, endpoint) {
-    regimens <- mod_int$xlevels$regimen_cat
-    out_list <- list()
-    
-    # A. Global (Main Effects)
-    if(kind == "AFT_HR") {
-      res_main <- calc_main_hr(mod_main, x_grid, q2)
+    if(type=="AFT") {
+      # Accelerated Failure Time models (survreg)
+      sc <- mod$scale; if(is.null(sc)) sc <- 1
+      log_est <- -delta / sc
+      se_est  <- se / sc
     } else {
-      res_main <- calc_main_or(mod_main, x_grid, q2)
+      # Logistic regression or Cox
+      log_est <- delta
+      se_est  <- se
     }
     
-    out_list[["Global"]] <- data.frame(
-      regimen = "Global (Main Eff.)", 
-      endpoint = endpoint,
-      logsiri = x_grid,
-      est = res_main$est, lo = res_main$lo, hi = res_main$hi
+    list(est=exp(log_est), lo=exp(log_est-1.96*se_est), hi=exp(log_est+1.96*se_est))
+  }
+  
+  # --- Build Data Frame Row from Model Object ---
+  build_row <- function(model, label, outcome, type="AFT") {
+    if(is.null(model$coef) || is.null(model$vcov)) stop("Model object missing coefficients or vcov")
+    
+    betas <- model$coef
+    se    <- sqrt(diag(model$vcov))
+    
+    df <- data.frame(term = names(betas), beta = betas, se = se, stringsAsFactors = FALSE)
+    
+    # Filter out Intercept, raw logsiri terms, and stratification variables (e.g., Age)
+    df <- df[!grepl("Intercept", df$term, ignore.case = TRUE), ]
+    df <- df[!grepl("logsiri", df$term, ignore.case = TRUE), ]
+    df <- df[!grepl("edad|age", df$term, ignore.case = TRUE), ]
+    
+    # Standardize Variable Labels for Publication
+    df$var_label <- df$term
+    df$var_label[grepl("diam", df$term)] <- "Tumor Diameter (>5 vs <=5cm)"
+    df$var_label[grepl("ecog.*1", df$term)] <- "ECOG PS (1 vs 0)"
+    df$var_label[grepl("ecog.*2", df$term)] <- "ECOG PS (>=2 vs 0)"
+    df$var_label[grepl("CACS", df$term)] <- "Cachexia (Yes vs No)"
+    df$var_label[grepl("Gem-Abraxane", df$term)] <- "Gem/Nab-P vs FOLFIRINOX"
+    df$var_label[grepl("Gemcitabine", df$term)] <- "Gemcitabine vs FOLFIRINOX"
+    df$var_label[grepl("Other", df$term)] <- "Other vs FOLFIRINOX"
+    
+    # Convert coefficients to HR/OR
+    if(type=="AFT") {
+      sc <- model$scale; if(is.null(sc)) sc <- 1
+      df$log_est <- -df$beta / sc
+      df$se_est  <- df$se / sc
+    } else {
+      df$log_est <- df$beta
+      df$se_est  <- df$se
+    }
+    
+    df$estimate <- exp(df$log_est)
+    df$lower    <- exp(df$log_est - 1.96 * df$se_est)
+    df$upper    <- exp(df$log_est + 1.96 * df$se_est)
+    
+    # Calculate specific logSIRI effect
+    siri_res <- calc_main_effect(model, val_q1, val_q3, k_int, k_bnd, type)
+    
+    row_siri <- data.frame(
+      term = "logsiri_main",
+      var_label = "logSIRI (Q3 vs Q1)",
+      estimate = siri_res$est,
+      lower = siri_res$lo,
+      upper = siri_res$hi,
+      stringsAsFactors = FALSE
     )
     
-    # B. Subgroups (Interaction)
-    # Define reference patient
-    diam0 <- "Low"; ecog0 <- "0"; cacs0 <- "No"
+    # Ensure column matching for binding
+    df_subset <- df[, c("term", "var_label", "estimate", "lower", "upper")]
     
-    # Note: ref_row, lp_contrast_mod_w, ratio_from_delta must be available 
-    # in the package namespace or sysdata.
+    final <- rbind(row_siri, df_subset)
+    final$Outcome <- outcome
     
-    for (rp in regimens) {
-      nd_ref <- ref_row(mod_int, q2, rp, diam0, ecog0, cacs0)
-      ests <- numeric(length(x_grid))
-      los <- numeric(length(x_grid))
-      his <- numeric(length(x_grid))
-      
-      for (i in seq_along(x_grid)) {
-        x <- x_grid[i]
-        nd_x <- ref_row(mod_int, x, rp, diam0, ecog0, cacs0)
-        cc <- lp_contrast_mod_w(mod_int, nd_ref, nd_x)
-        rr <- ratio_from_delta(mod_int, cc$delta, cc$var_delta, kind)
-        ests[i] <- rr[1]; los[i] <- rr[2]; his[i] <- rr[3]
-      }
-      out_list[[rp]] <- data.frame(
-        regimen = rp, endpoint = endpoint, logsiri = x_grid, 
-        est = ests, lo = los, hi = his
-      )
-    }
-    do.call(rbind, out_list)
+    return(final)
   }
   
-  # --- 5. Generate Data ---
-  df1 <- calc_curve_mixed(mod_pfs_int, mod_pfs_main, "AFT_HR", "PFS")
-  df2 <- calc_curve_mixed(mod_os_int, mod_os_main, "AFT_HR", "OS")
-  df3 <- calc_curve_mixed(mod_resp_int, mod_resp_main, "LOGIT_OR", "Response")
+  # =============================================================================
+  # 3. DATA GENERATION
+  # =============================================================================
   
-  df_curves <- rbind(df1, df2, df3)
+  # Access internal package models directly
+  df_pfs  <- build_row(FINAL_PFS_RUBIN_sin_interaccion, "PFS", "PFS (HR)", "AFT")
+  df_os   <- build_row(FINAL_OS_RUBIN_sin_interaccion,  "OS",  "OS (HR)",  "AFT")
+  df_resp <- build_row(FINAL_RESP_RUBIN_sin_interaccion,"Resp","Response (OR)", "LOGIT")
   
-  # Clean "Other" and factors
-  .drop_other <- trimws(as.character(df_curves$regimen)) == "Other"
-  df_curves <- df_curves[!.drop_other, , drop = FALSE]
+  # Combine all outcomes
+  df_plot <- rbind(df_pfs, df_os, df_resp)
   
-  df_curves$endpoint <- factor(df_curves$endpoint, levels = c("PFS", "OS", "Response"))
+  # Format estimate labels
+  df_plot$label_text <- sprintf("%.2f (%.2f-%.2f)", df_plot$estimate, df_plot$lower, df_plot$upper)
   
-  # --- ORDERING: Put Global at the BOTTOM ---
-  reg_levels <- unique(as.character(df_curves$regimen))
-  regs_only  <- setdiff(reg_levels, "Global (Main Eff.)")
-  # Interaction regimens first, Global last
-  final_levels <- c(regs_only, "Global (Main Eff.)") 
-  df_curves$regimen <- factor(df_curves$regimen, levels = final_levels)
+  # Set Factor Levels for Ordering
+  orden_vars <- unique(df_plot$var_label)
+  orden_vars <- c(setdiff(orden_vars, "logSIRI (Q3 vs Q1)"), "logSIRI (Q3 vs Q1)")
+  df_plot$var_label <- factor(df_plot$var_label, levels = orden_vars)
   
-  # --- 6. P-Values ---
-  calc_pvals_mixed <- function(mod_int, mod_main, endpoint, regs) {
-    out <- data.frame(regimen = regs, endpoint = endpoint, p_overall = NA, p_nl = NA)
+  df_plot$Outcome <- factor(df_plot$Outcome, levels = c("OS (HR)", "PFS (HR)", "Response (OR)"))
+  
+  # =============================================================================
+  # 4. PLOTTING
+  # =============================================================================
+  
+  p <- ggplot2::ggplot(df_plot, ggplot2::aes(x = estimate, y = var_label, color = Outcome)) +
+    ggplot2::geom_vline(xintercept = 1, linetype = "solid", color = "grey30", linewidth = 0.4) +
     
-    for(r in regs) {
-      if(r == "Global (Main Eff.)") {
-        # Main Effect P-values
-        out$p_overall[out$regimen==r] <- wald_p_custom(mod_main, "logsiri")
-        # Check non-linearity if splines exist
-        if(length(grep("logsiri", names(mod_main$coef))) > 1) {
-          nms <- grep("logsiri", names(mod_main$coef), value=TRUE)
-          # Usually the first term is linear, subsequent are non-linear
-          if(length(nms) > 1) {
-            out$p_nl[out$regimen==r] <- wald_p_custom(mod_main, paste(nms[-1], collapse="|"))
-          }
-        }
-      } else {
-        # Interaction Model P-values
-        # Simplify regex for regimen name
-        term_r <- gsub("([\\^\\$\\.|\\(\\)\\[\\]\\*\\+\\?\\\\])", "\\\\\\1", r)
-        # Find terms specific to this regimen interacting with logsiri
-        # Note: This logic assumes standard interaction naming
-        pat <- paste0("logsiri.*", term_r, "|", term_r, ".*logsiri")
-        
-        # If pattern not found, might be the reference level?
-        # If so, fall back to main logsiri terms in the interaction model
-        if(length(grep(pat, names(mod_int$coef))) == 0) {
-          # It's likely the reference regimen
-          pat <- "^logsiri" 
-          # But we must exclude interaction terms with other regimens
-          # This part is tricky without specific model structure. 
-          # Fallback: calculate Wald P for 'logsiri' + 'logsiri:regimen' combined?
-          # For safety in this plot, we stick to the provided interaction logic or NA
-        }
-        out$p_overall[out$regimen==r] <- wald_p_custom(mod_int, pat)
-      }
-    }
-    return(out)
-  }
-  
-  regs_u <- levels(df_curves$regimen)
-  p1 <- calc_pvals_mixed(mod_pfs_int, mod_pfs_main, "PFS", regs_u)
-  p2 <- calc_pvals_mixed(mod_os_int, mod_os_main, "OS", regs_u)
-  p3 <- calc_pvals_mixed(mod_resp_int, mod_resp_main, "Response", regs_u)
-  df_p_pan <- rbind(p1, p2, p3)
-  
-  fmt_p <- function(p) {
-    p <- as.numeric(p)
-    out <- character(length(p))
-    out[is.na(p)] <- ""
-    out[!is.na(p) & p < 0.001] <- "<0.001"
-    idx <- !is.na(p) & p >= 0.001
-    out[idx] <- sprintf("%.3f", p[idx])
-    out
-  }
-  
-  df_p_pan$lab <- ifelse(!is.na(df_p_pan$p_nl) & df_p_pan$p_nl < 0.05, 
-                         paste0("p = ", fmt_p(df_p_pan$p_overall), "\nNon-lin p = ", fmt_p(df_p_pan$p_nl)),
-                         paste0("p = ", fmt_p(df_p_pan$p_overall)))
-  
-  # Clean up labels for rows where p is missing
-  df_p_pan$lab[df_p_pan$lab == "p = "] <- ""
-  
-  df_p_pan$x <- -Inf; df_p_pan$y <- Inf
-  
-  # --- 7. Plotting ---
-  pal_line <- c(PFS = "#1E5AA8", OS = "#35686C", Response = "#5A6C80")
-  pal_fill <- pal_line
-  
-  lab_regimen <- function(x) {
-    x0 <- as.character(x)
-    x0[grepl("^gemcitabine\\s+mono$", trimws(x0), ignore.case = TRUE)] <- "Gemcitabine"
-    x0
-  }
-  
-  p <- ggplot2::ggplot(df_curves, ggplot2::aes(x = logsiri, y = est)) + 
-    ggplot2::geom_ribbon(ggplot2::aes(ymin = lo, ymax = hi, fill = endpoint), alpha = 0.18, color = NA) + 
-    ggplot2::geom_line(ggplot2::aes(color = endpoint), linewidth = 0.95) + 
-    ggplot2::geom_hline(yintercept = 1, linetype = "dashed", color = "grey45", linewidth = 0.6) + 
-    ggplot2::geom_vline(xintercept = q2, linetype = "dotted", color = "grey55", linewidth = 0.55) + 
-    ggplot2::geom_text(data = df_p_pan, ggplot2::aes(x = x, y = y, label = lab), 
-                       inherit.aes = FALSE, hjust = -0.05, vjust = 1.2, 
-                       size = 3, color = "grey15", lineheight = 0.9) + 
-    ggplot2::facet_grid(regimen ~ endpoint, labeller = ggplot2::labeller(regimen = lab_regimen)) + 
-    ggplot2::scale_x_continuous(breaks = c(-2, -1, 0, 1, 2, 3)) + 
-    ggplot2::scale_y_log10(breaks = c(0.1, 0.2, 0.5, 1, 2, 4, 7)) + 
-    ggplot2::coord_cartesian(ylim = c(0.1, 7), clip = "off") + 
-    ggplot2::scale_color_manual(values = pal_line, guide = "none") + 
-    ggplot2::scale_fill_manual(values = pal_fill, guide = "none") + 
-    ggplot2::labs(x = "logSIRI", 
-                  y = "HR / OR relative to median SIRI", 
-                  title = "Effect of logSIRI: Global (Main Effects) vs Regimens", 
-                  subtitle = "Bottom Row: Main Effects Models. Upper Rows: Interaction Models.") + 
-    ggplot2::theme_classic(base_size = 14) + 
-    ggplot2::theme(strip.background = ggplot2::element_rect(fill = "grey95", color = NA), 
-                   strip.text = ggplot2::element_text(face = "bold", size = 11), 
-                   axis.title = ggplot2::element_text(size = 13), 
-                   axis.text = ggplot2::element_text(size = 11.5), 
-                   plot.margin = ggplot2::margin(8, 8, 8, 8))
+    ggplot2::geom_errorbarh(ggplot2::aes(xmin = lower, xmax = upper), height = 0.2, linewidth = 0.7) +
+    ggplot2::geom_point(size = 3, shape = 15) +
+    
+    # Add text labels aligned to the right
+    ggplot2::geom_text(ggplot2::aes(label = label_text, x = upper),
+                       hjust = -0.2, size = 3, show.legend = FALSE, family = "sans") +
+    
+    ggplot2::facet_wrap(~ Outcome, scales = "free_x") +
+    
+    # Scales and Colors
+    ggplot2::scale_x_log10(breaks = c(0.2, 0.5, 1, 2, 5, 10)) +
+    ggplot2::scale_color_manual(values = c("PFS (HR)"="#377eb8", "OS (HR)"="#e41a1c", "Response (OR)"="#4daf4a")) +
+    
+    # Labels and Titles
+    ggplot2::labs(title = "Multivariable Analysis of Outcomes",
+                  subtitle = "Forest plot showing Hazard Ratios (HR) and Odds Ratios (OR)",
+                  x = "Estimate (95% CI)",
+                  y = NULL) +
+    
+    # Theme Settings
+    ggplot2::theme_classic(base_size = 11) +
+    ggplot2::theme(
+      strip.background = ggplot2::element_rect(fill = "grey95", color = NA),
+      strip.text = ggplot2::element_text(face = "bold", size = 11),
+      panel.border = ggplot2::element_rect(color = "black", fill = NA, linewidth = 0.5),
+      panel.grid.major.y = ggplot2::element_line(color = "grey90", linewidth = 0.3),
+      panel.grid.major.x = ggplot2::element_blank(),
+      panel.grid.minor = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_text(size = 10, color = "black"),
+      axis.text.x = ggplot2::element_text(size = 9, color = "grey30"),
+      legend.position = "none",
+      plot.margin = ggplot2::margin(10, 20, 10, 10)
+    ) +
+    
+    # Expansion to fit text labels
+    ggplot2::scale_x_continuous(trans = "log10",
+                                breaks = c(0.2, 0.5, 1, 2, 5, 10),
+                                expand = ggplot2::expansion(mult = c(0.05, 0.6)))
   
   return(p)
 }

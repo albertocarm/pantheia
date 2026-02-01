@@ -2,6 +2,7 @@
 
 export(fig_1)
 export(fig_2)
+export(fig_3)
 export(fig_s1)
 export(fig_s2)
 export(fig_s3)
