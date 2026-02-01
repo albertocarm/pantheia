@@ -15,6 +15,14 @@ Imports:
     splines,
     ggplot2,
     scales,
-    ggpubr
+    ggpubr,
+    MASS,
+    dplyr,
+    ggsci,
+    ggstatsplot,
+    gtsummary,
+    patchwork,
+    rlang,
+    survminer
 RoxygenNote: 7.2.3
 LazyData: true

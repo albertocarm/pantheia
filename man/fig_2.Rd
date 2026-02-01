@@ -6,9 +6,6 @@
 \usage{
 fig_2()
 }
-\value{
-A ggplot object.
-}
 \description{
 Reproduces Figure 2. Plots the estimated HR (PFS, OS) and OR (Response) against logSIRI,
 stratified by chemotherapy regimen. Includes panel-specific p-values for the main effect
