@@ -99,8 +99,8 @@ siri_calculator <- function() {
       mediana <- exp(lp + scale * log_log_2)
       
       # Calculate real SE using variance-covariance matrix
-      if (!is.null(modelo$var)) {
-        var_mat <- modelo$var
+      if (!is.null(modelo$vcov)) {
+        var_mat <- modelo$vcov
         n_coef <- length(modelo$coef)
         
         if (nrow(var_mat) > n_coef) {
@@ -142,24 +142,25 @@ siri_calculator <- function() {
   predecir_respuesta <- function(modelo, newdata) {
     # Extract model components
     coefs <- modelo$coef
-    knots_interior <- modelo$knots  # c(1, 3)
-    
-    # Get boundary knots from terms attribute
+
+    # Interior and boundary knots (fixed from model specification)
+    knots_interior <- c(1, 3)
     boundary_knots <- c(-2.40794560865187, 4.91190045341057)
-    
+
     # Get logsiri value
     logsiri_val <- newdata$logsiri
-    
+
     # Create spline basis manually with correct knots
     ns_basis <- splines::ns(logsiri_val, knots = knots_interior, Boundary.knots = boundary_knots)
-    
+
     # Start linear predictor with intercept
     lp <- coefs["(Intercept)"]
-    
-    # Add spline terms
-    lp <- lp + ns_basis[1, 1] * coefs["ns(logsiri, knots = c(1, 3))1"]
-    lp <- lp + ns_basis[1, 2] * coefs["ns(logsiri, knots = c(1, 3))2"]
-    lp <- lp + ns_basis[1, 3] * coefs["ns(logsiri, knots = c(1, 3))3"]
+
+    # Add spline terms (match coefficient names dynamically)
+    spline_coef_idx <- sort(grep("^ns\\(logsiri", names(coefs)))
+    for (i in seq_along(spline_coef_idx)) {
+      lp <- lp + ns_basis[1, i] * coefs[spline_coef_idx[i]]
+    }
     
     # Add diam_low effect
     if (as.character(newdata$diam_low) == "Low") {
