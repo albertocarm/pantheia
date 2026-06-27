@@ -101,7 +101,7 @@ fig_s4 <- function(data = pantheia::pantheia_data) {
   
   # 5. EDAD (SCATTER PLOT)
   # Usamos ggpubr::ggscatter como en tu script original
-  # Filtramos NAs de edad/siri antes para evitar warnings
+  # Filter out NAs in age/siri beforehand to avoid warnings
   df_age <- dplyr::filter(data, !is.na(edad), !is.na(logsiri), is.finite(logsiri))
   
   p_age <- ggpubr::ggscatter(df_age, x = "edad", y = "logsiri",

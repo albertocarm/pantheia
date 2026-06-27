@@ -1,12 +1,13 @@
-#' Datos clínicos del estudio PanTheia
+#' Clinical data from the PANTHEIA-SEOM study
 #'
-#' Dataset conteniendo información clínica y valores SIRI de pacientes.
+#' Dataset containing clinical information and SIRI values for patients with
+#' metastatic pancreatic ductal adenocarcinoma.
 #'
-#' @format Un data frame con filas y variables:
+#' @format A data frame with one row per patient and the following variables:
 #' \describe{
-#'   \item{logsiri}{Logaritmo del índice SIRI}
-#'   \item{pfs_time1l}{Tiempo de supervivencia libre de progresión}
+#'   \item{logsiri}{Natural logarithm of the SIRI index}
+#'   \item{pfs_time1l}{Progression-free survival time (months)}
 #'   ...
 #' }
-#' @source Datos internos del estudio.
+#' @source Internal PANTHEIA-SEOM study data.
 "pantheia_data"

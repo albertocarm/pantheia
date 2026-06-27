@@ -1,7 +1,7 @@
 Package: pantheia
 Title: Pancreatic Cancer Prognostic Calculator (Pantheia Group)
 Version: 0.1.0
-Authors@R: person("Pantheia/SEOM", role = c("aut", "cre"), email = "pantheia@example.com")
+Authors@R: person("Alberto", "Carmona-Bayonas", role = c("aut", "cre"), email = "carmonab@um.es")
 Description: Interactive Shiny application illustrating the prognostic impact
     of SIRI (Systemic Inflammation Response Index) on therapeutic outcomes in
     pancreatic cancer. Provides predicted median PFS, OS, and response

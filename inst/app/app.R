@@ -17,23 +17,23 @@ mod_resp <- readRDS("FINAL_RESP_RUBIN_NS13.rds")
 # 2. PREDICTION ENGINE (WITH ERROR BYPASS)
 # =============================================================================
 
-predecir_final <- function(modelo, newdata) {
+predict_final <- function(model, newdata) {
 
   # A. PREPARATION
-  knots_logsiri <- modelo$knots
-  trms <- delete.response(modelo$terms)
+  knots_logsiri <- model$knots
+  trms <- delete.response(model$terms)
   environment(trms) <- environment()
 
   # B. DESIGN MATRIX
-  mf <- model.frame(trms, newdata, xlev = modelo$xlevels, na.action = na.pass)
+  mf <- model.frame(trms, newdata, xlev = model$xlevels, na.action = na.pass)
   X <- model.matrix(trms, mf)
 
   # C. COEFFICIENT MAPPING
   beta_final <- numeric(ncol(X))
   names(beta_final) <- colnames(X)
 
-  coefs_origen <- modelo$coef
-  nombres_coef <- names(coefs_origen)
+  coefs_orig <- model$coef
+  src_coef_names <- names(coefs_orig)
 
   # Function to normalize names (ignores order A:B vs B:A)
   norm_str <- function(s) {
@@ -42,40 +42,40 @@ predecir_final <- function(modelo, newdata) {
   }
 
   # Create search map
-  mapa_modelo <- list()
-  for (nm in nombres_coef) mapa_modelo[[norm_str(nm)]] <- nm
+  coef_map <- list()
+  for (nm in src_coef_names) coef_map[[norm_str(nm)]] <- nm
 
   # Loop through matrix columns
-  for (nom_x in colnames(X)) {
+  for (col_nm in colnames(X)) {
     val <- NA
 
     # 1. Exact search
-    if (nom_x %in% nombres_coef) {
-      val <- coefs_origen[[nom_x]]
+    if (col_nm %in% src_coef_names) {
+      val <- coefs_orig[[col_nm]]
     }
     # 2. Normalized search
     else {
-      nom_n <- norm_str(nom_x)
-      if (nom_n %in% names(mapa_modelo)) {
-        nombre_real <- mapa_modelo[[nom_n]]
-        val <- coefs_origen[[nombre_real]]
+      norm_nm <- norm_str(col_nm)
+      if (norm_nm %in% names(coef_map)) {
+        real_nm <- coef_map[[norm_nm]]
+        val <- coefs_orig[[real_nm]]
       }
     }
-    beta_final[nom_x] <- val
+    beta_final[col_nm] <- val
   }
 
   # D. SPLINE FILLING (By position)
   idx_nas <- which(is.na(beta_final))
   if (length(idx_nas) > 0) {
-    nombres_faltantes <- names(beta_final)[idx_nas]
+    missing_names <- names(beta_final)[idx_nas]
 
     # If they are splines, fill by order
-    if (all(grepl("ns\\(", nombres_faltantes))) {
-      idx_spline_coef <- grep("ns\\(", nombres_coef)
+    if (all(grepl("ns\\(", missing_names))) {
+      idx_spline_coef <- grep("ns\\(", src_coef_names)
       idx_spline_X    <- grep("ns\\(", colnames(X))
 
       if (length(idx_spline_coef) == length(idx_spline_X)) {
-        beta_final[idx_spline_X] <- coefs_origen[idx_spline_coef]
+        beta_final[idx_spline_X] <- coefs_orig[idx_spline_coef]
       }
     }
   }
@@ -88,16 +88,16 @@ predecir_final <- function(modelo, newdata) {
   # F. FINAL CALCULATION
   lp <- as.vector(X %*% beta_final)
 
-  if (!is.null(modelo$dist) && modelo$dist == "weibull") {
+  if (!is.null(model$dist) && model$dist == "weibull") {
     # Weibull model
-    scale <- modelo$scale
+    scale <- model$scale
     log_log_2 <- log(-log(0.5))
-    mediana <- exp(lp + scale * log_log_2)
+    median_val <- exp(lp + scale * log_log_2)
 
     # Calculate real SE using variance-covariance matrix
-    if (!is.null(modelo$vcov)) {
-      var_mat <- modelo$vcov
-      n_coef <- length(modelo$coef)
+    if (!is.null(model$vcov)) {
+      var_mat <- model$vcov
+      n_coef <- length(model$coef)
 
       if (nrow(var_mat) > n_coef) {
         var_mat <- var_mat[1:n_coef, 1:n_coef]
@@ -107,7 +107,7 @@ predecir_final <- function(modelo, newdata) {
       rownames(var_mapped) <- colnames(X)
       colnames(var_mapped) <- colnames(X)
 
-      coef_names <- names(modelo$coef)
+      coef_names <- names(model$coef)
       for (i in seq_along(coef_names)) {
         for (j in seq_along(coef_names)) {
           ni <- coef_names[i]
@@ -127,7 +127,7 @@ predecir_final <- function(modelo, newdata) {
     ic_low <- exp((lp - 1.96 * se_lp) + scale * log_log_2)
     ic_up  <- exp((lp + 1.96 * se_lp) + scale * log_log_2)
 
-    return(list(val = mediana, lower = ic_low, upper = ic_up, lp = lp, scale = scale, se_lp = se_lp))
+    return(list(val = median_val, lower = ic_low, upper = ic_up, lp = lp, scale = scale, se_lp = se_lp))
 
   } else {
     # Logistic model
@@ -140,10 +140,10 @@ predecir_final <- function(modelo, newdata) {
 # 2B. PREDICTION ENGINE FOR RESPONSE MODEL WITH SPLINES
 # =============================================================================
 
-predecir_respuesta <- function(modelo, newdata) {
+predict_response <- function(model, newdata) {
 
   # Extract model components
-  coefs <- modelo$coef
+  coefs <- model$coef
 
   # Interior and boundary knots (fixed from model specification)
   knots_interior <- c(1, 3)
@@ -207,10 +207,10 @@ predecir_respuesta <- function(modelo, newdata) {
 # 3. USER INTERFACE (UI)
 # =============================================================================
 
-niveles <- mod_pfs$xlevels
+lvls <- mod_pfs$xlevels
 
 # FILTER: Remove "Other" from regimen options
-opciones_regimen <- niveles$regimen_cat[niveles$regimen_cat != "Other"]
+regimen_opts <- lvls$regimen_cat[lvls$regimen_cat != "Other"]
 
 ui <- fluidPage(
   tags$head(tags$style(HTML("
@@ -391,10 +391,10 @@ ui <- fluidPage(
                   choices = c(">5 cm" = "GT5", "<=5 cm" = "LE5", "Non-measurable disease" = "NonMeasurable"),
                   selected = "GT5"),
 
-      # Regimen filtrado (Sin Other)
-      selectInput("regimen", "Regimen:", choices = opciones_regimen, selected = "FOLFIRINOX"),
+      # Regimen options (excluding 'Other')
+      selectInput("regimen", "Regimen:", choices = regimen_opts, selected = "FOLFIRINOX"),
 
-      selectInput("ecog", "ECOG PS:", choices = niveles$ecog_cat_3, selected = "1"),
+      selectInput("ecog", "ECOG PS:", choices = lvls$ecog_cat_3, selected = "1"),
 
       # CACS with tooltip
       div(
@@ -402,7 +402,7 @@ ui <- fluidPage(
           "CACS:",
           tags$span(class = "info-icon", title = "Cancer Anorexia-Cachexia Syndrome. A multifactorial syndrome characterized by ongoing loss of skeletal muscle mass (with or without fat mass loss) that cannot be fully reversed by conventional nutritional support.", "?")
         ),
-        selectInput("cacs", label = NULL, choices = niveles$CACS, selected = "Yes")
+        selectInput("cacs", label = NULL, choices = lvls$CACS, selected = "Yes")
       ),
 
       br(),
@@ -500,9 +500,9 @@ server <- function(input, output) {
     vals$base_df <- df
 
     # Safe calculations
-    vals$pfs  <- predecir_final(mod_pfs, df)
-    vals$os   <- predecir_final(mod_os, df)
-    vals$resp <- predecir_final(mod_resp, df)
+    vals$pfs  <- predict_final(mod_pfs, df)
+    vals$os   <- predict_final(mod_os, df)
+    vals$resp <- predict_final(mod_resp, df)
   })
 
   # Text outputs
