@@ -70,7 +70,7 @@ This opens the interactive application in your default web browser. The calculat
 | **Tumor diameter** | Sum of all baseline target lesion diameters (<=5 cm vs >5 cm) |
 | **Regimen** | First-line chemotherapy regimen |
 | **ECOG PS** | Eastern Cooperative Oncology Group Performance Status |
-| **CACS** | Cancer Anorexia-Cachexia Syndrome (Yes/No) |
+| **CACS** | Cancer anorexia-cachexia syndrome — baseline symptom composite: anorexia, cachexia, asthenia, or weight loss >5% (Yes/No) |
 
 ## Online Version
 

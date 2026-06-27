@@ -400,7 +400,7 @@ ui <- fluidPage(
       div(
         tags$label(
           "CACS:",
-          tags$span(class = "info-icon", title = "Cancer Anorexia-Cachexia Syndrome. A multifactorial syndrome characterized by ongoing loss of skeletal muscle mass (with or without fat mass loss) that cannot be fully reversed by conventional nutritional support.", "?")
+          tags$span(class = "info-icon", title = "Cancer anorexia-cachexia syndrome. In this model, a baseline symptom composite: presence of anorexia, cachexia, asthenia, or weight loss >5%.", "?")
         ),
         selectInput("cacs", label = NULL, choices = lvls$CACS, selected = "Yes")
       ),
