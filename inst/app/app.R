@@ -385,8 +385,10 @@ ui <- fluidPage(
         numericInput("siri", label = NULL, value = 2.1, min = 0.01, step = 0.1)
       ),
 
-      # Tumor diameter with levels containing High/Low
-      selectInput("diam", "Sum of all baseline tumor diameters:", choices = c("Low (<=5 cm)" = "Low", "High (>5 cm)" = "High"), selected = "High"),
+      # Tumour burden (sum of RECIST target lesions), three levels
+      selectInput("diam", "Tumour burden (sum of RECIST target lesions):",
+                  choices = c(">5 cm" = "GT5", "<=5 cm" = "LE5", "Non-measurable disease" = "NonMeasurable"),
+                  selected = "GT5"),
 
       # Regimen filtrado (Sin Other)
       selectInput("regimen", "Regimen:", choices = opciones_regimen, selected = "FOLFIRINOX"),
@@ -486,7 +488,8 @@ server <- function(input, output) {
     # Patient dataframe
     df <- data.frame(
       logsiri     = log(input$siri),
-      diam_low    = factor(input$diam, levels = mod_pfs$xlevels$diam_low),
+      diam3       = factor(input$diam, levels = c("GT5", "LE5", "NonMeasurable")),
+      diam_low    = factor(ifelse(input$diam == "LE5", "Low", "High"), levels = mod_pfs$xlevels$diam_low),
       regimen_cat = factor(input$regimen, levels = mod_pfs$xlevels$regimen_cat),
       ecog_cat_3  = factor(input$ecog, levels = mod_pfs$xlevels$ecog_cat_3),
       CACS        = factor(input$cacs, levels = mod_pfs$xlevels$CACS)

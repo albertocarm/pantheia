@@ -122,7 +122,7 @@ siri_calculator <- function() {
           tags$label("SIRI (absolute value):", tags$span(class = "info-icon", title = "Systemic Inflammation Response Index.", "?")),
           numericInput("siri", label = NULL, value = 2.1, min = 0.01, step = 0.1)
         ),
-        selectInput("diam", "Sum of all baseline tumor diameters:", choices = c("Low (<=5 cm)" = "Low", "High (>5 cm)" = "High"), selected = "High"),
+        selectInput("diam", "Tumour burden (sum of RECIST target lesions):", choices = c(">5 cm" = "GT5", "<=5 cm" = "LE5", "Non-measurable disease" = "NonMeasurable"), selected = "GT5"),
         selectInput("regimen", "Regimen:", choices = regimen_opts, selected = "FOLFIRINOX"),
         selectInput("ecog", "ECOG PS:", choices = levels_list$ecog_cat_3, selected = "1"),
         div(
@@ -168,7 +168,8 @@ siri_calculator <- function() {
       
       df <- data.frame(
         logsiri = log(input$siri),
-        diam_low    = factor(input$diam, levels = lvls$diam_low),
+        diam3       = factor(input$diam, levels = c("GT5", "LE5", "NonMeasurable")),
+        diam_low    = factor(ifelse(input$diam == "LE5", "Low", "High"), levels = lvls$diam_low),
         regimen_cat = factor(input$regimen, levels = lvls$regimen_cat),
         ecog_cat_3  = factor(input$ecog, levels = lvls$ecog_cat_3),
         CACS        = factor(input$cacs, levels = lvls$CACS)
