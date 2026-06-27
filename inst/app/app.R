@@ -118,6 +118,7 @@ predecir_final <- function(modelo, newdata) {
         }
       }
 
+      var_mapped[is.na(var_mapped)] <- 0
       se_lp <- sqrt(as.vector(X %*% var_mapped %*% t(X)))
     } else {
       se_lp <- 0.1 * abs(lp)
@@ -501,7 +502,7 @@ server <- function(input, output) {
     # Safe calculations
     vals$pfs  <- predecir_final(mod_pfs, df)
     vals$os   <- predecir_final(mod_os, df)
-    vals$resp <- predecir_respuesta(mod_resp, df)
+    vals$resp <- predecir_final(mod_resp, df)
   })
 
   # Text outputs
