@@ -392,7 +392,9 @@ ui <- fluidPage(
                   selected = "GT5"),
 
       # Regimen options (excluding 'Other')
-      selectInput("regimen", "Regimen:", choices = regimen_opts, selected = "FOLFIRINOX"),
+      selectInput("regimen", "Regimen:*", choices = regimen_opts, selected = "FOLFIRINOX"),
+      div(style = "color:#7f8c8d; font-size:11px; font-style:italic; margin-top:-6px; margin-bottom:12px;",
+          HTML("*The prognostic model also includes an &quot;other regimen&quot; category (miscellaneous first-line schedules). It is not selectable here because its interaction with SIRI could not be reliably estimated; the calculator is restricted to the three regimens with an estimable SIRI effect.")),
 
       selectInput("ecog", "ECOG PS:", choices = lvls$ecog_cat_3, selected = "1"),
 
